@@ -214,7 +214,8 @@ async def stream_logs(script_id: str):
             # Check if script has ended
             status = script_runner.get_script_status(script_id)
             if status['status'] == 'finished':
-                yield f"data: {json.dumps({'log': f'Script has ended, return code: {status.get('return_code')}', 'finished': True})}\n\n"
+                return_code = status.get('return_code')
+                yield f"data: {json.dumps({'log': f'Script has ended, return code: {return_code}', 'finished': True})}\n\n"
                 break
             
             # Wait for a while
