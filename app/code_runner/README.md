@@ -65,7 +65,7 @@ Response:
 
 ```json
 {
-    "script_id": "script_id",
+    "code_id": "code_id",
     "message": "Script has started running"
 }
 ```
@@ -73,7 +73,7 @@ Response:
 #### Get Logs
 
 ```
-GET /api/logs/{script_id}
+GET /api/logs/{code_id}
 ```
 
 Response:
@@ -87,7 +87,7 @@ Response:
 #### Stream Logs
 
 ```
-GET /api/stream-logs/{script_id}
+GET /api/stream-logs/{code_id}
 ```
 
 Response: Event stream
@@ -95,14 +95,14 @@ Response: Event stream
 #### Get Script Status
 
 ```
-GET /api/status/{script_id}
+GET /api/status/{code_id}
 ```
 
 Response:
 
 ```json
 {
-    "script_id": "script_id",
+    "code_id": "code_id",
     "status": "running|finished|not_found",
     ...
 }
@@ -111,14 +111,14 @@ Response:
 #### Stop Script
 
 ```
-POST /api/stop/{script_id}
+POST /api/stop/{code_id}
 ```
 
 Response:
 
 ```json
 {
-    "script_id": "script_id",
+    "code_id": "code_id",
     "message": "Script has been stopped"
 }
 ```
@@ -180,10 +180,10 @@ hello_world_code = get_examples()['hello_world']['code']
 # Use API to run example
 import requests
 response = requests.post('http://localhost:5000/api/run', json={'code': hello_world_code})
-script_id = response.json()['script_id']
+code_id = response.json()['code_id']
 
 # Get logs
-logs_response = requests.get(f'http://localhost:5000/api/logs/{script_id}')
+logs_response = requests.get(f'http://localhost:5000/api/logs/{code_id}')
 logs = logs_response.json()['logs']
 print(logs)
 ```

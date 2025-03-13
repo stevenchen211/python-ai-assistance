@@ -49,7 +49,7 @@ class CodeRequest(BaseModel):
     code: str
 
 class ScriptResponse(BaseModel):
-    script_id: str
+    code_id: str
     message: str
 
 class LogsResponse(BaseModel):
@@ -120,7 +120,7 @@ async def run_script(code_request: CodeRequest):
     
     Response:
     {
-        "script_id": "Script ID",
+        "code_id": "Code ID",
         "message": "Script has started running"
     }
     """
@@ -128,24 +128,24 @@ async def run_script(code_request: CodeRequest):
         code = code_request.code
         
         # Initialize log list
-        script_id = None
+        code_id = None
         
         def log_callback(message):
-            nonlocal script_id
-            if script_id:
-                if script_id not in script_logs:
-                    script_logs[script_id] = []
-                script_logs[script_id].append(message)
+            nonlocal code_id
+            if code_id:
+                if code_id not in script_logs:
+                    script_logs[code_id] = []
+                script_logs[code_id].append(message)
         
         # Run script
-        script_id = script_runner.run_script(code, log_callback)
+        code_id = script_runner.run_script(code, log_callback)
         
         # Initialize logs
-        if script_id not in script_logs:
-            script_logs[script_id] = []
+        if code_id not in script_logs:
+            script_logs[code_id] = []
         
         return {
-            'script_id': script_id,
+            'code_id': code_id,
             'message': 'Script has started running'
         }
         
@@ -154,8 +154,8 @@ async def run_script(code_request: CodeRequest):
         raise HTTPException(status_code=500, detail=f"Error running script: {str(e)}")
 
 
-@app.get("/api/logs/{script_id}", response_model=LogsResponse)
-async def get_logs(script_id: str):
+@app.get("/api/logs/{code_id}", response_model=LogsResponse)
+async def get_logs(code_id: str):
     """
     Get Script Logs API
     
@@ -166,16 +166,16 @@ async def get_logs(script_id: str):
     """
     try:
         # Get new logs
-        new_logs = script_runner.get_logs(script_id)
+        new_logs = script_runner.get_logs(code_id)
         
         # Add to log storage
-        if script_id not in script_logs:
-            script_logs[script_id] = []
+        if code_id not in script_logs:
+            script_logs[code_id] = []
         
-        script_logs[script_id].extend(new_logs)
+        script_logs[code_id].extend(new_logs)
         
         return {
-            'logs': script_logs[script_id]
+            'logs': script_logs[code_id]
         }
         
     except Exception as e:
@@ -183,8 +183,8 @@ async def get_logs(script_id: str):
         raise HTTPException(status_code=500, detail=f"Error getting logs: {str(e)}")
 
 
-@app.get("/api/stream-logs/{script_id}")
-async def stream_logs(script_id: str):
+@app.get("/api/stream-logs/{code_id}")
+async def stream_logs(code_id: str):
     """
     Stream Script Logs API
     
@@ -192,27 +192,27 @@ async def stream_logs(script_id: str):
     """
     async def generate():
         # Initialize log index
-        if script_id not in script_logs:
-            script_logs[script_id] = []
+        if code_id not in script_logs:
+            script_logs[code_id] = []
         
         log_index = 0
         
         while True:
             # Get new logs
-            new_logs = script_runner.get_logs(script_id)
+            new_logs = script_runner.get_logs(code_id)
             
             # Add to log storage
-            script_logs[script_id].extend(new_logs)
+            script_logs[code_id].extend(new_logs)
             
             # Send new logs
-            current_logs = script_logs[script_id]
+            current_logs = script_logs[code_id]
             while log_index < len(current_logs):
                 log = current_logs[log_index]
                 log_index += 1
                 yield f"data: {json.dumps({'log': log})}\n\n"
             
             # Check if script has ended
-            status = script_runner.get_script_status(script_id)
+            status = script_runner.get_script_status(code_id)
             if status['status'] == 'finished':
                 return_code = status.get('return_code')
                 yield f"data: {json.dumps({'log': f'Script has ended, return code: {return_code}', 'finished': True})}\n\n"
@@ -227,20 +227,23 @@ async def stream_logs(script_id: str):
     )
 
 
-@app.get("/api/status/{script_id}")
-async def get_status(script_id: str):
+@app.get("/api/status/{code_id}")
+async def get_status(code_id: str):
     """
     Get Script Status API
     
     Response:
     {
-        "script_id": "Script ID",
+        "code_id": "Code ID",
         "status": "running|finished|not_found",
         ...
     }
     """
     try:
-        status = script_runner.get_script_status(script_id)
+        status = script_runner.get_script_status(code_id)
+        # Replace script_id with code_id in the response
+        if 'script_id' in status:
+            status['code_id'] = status.pop('script_id')
         return status
         
     except Exception as e:
@@ -248,29 +251,29 @@ async def get_status(script_id: str):
         raise HTTPException(status_code=500, detail=f"Error getting status: {str(e)}")
 
 
-@app.post("/api/stop/{script_id}", response_model=ScriptResponse)
-async def stop_script(script_id: str):
+@app.post("/api/stop/{code_id}", response_model=ScriptResponse)
+async def stop_script(code_id: str):
     """
     Stop Script API
     
     Response:
     {
-        "script_id": "Script ID",
+        "code_id": "Code ID",
         "message": "Script has been stopped"
     }
     """
     try:
-        success = script_runner.stop_script(script_id)
+        success = script_runner.stop_script(code_id)
         
         if success:
             return {
-                'script_id': script_id,
+                'code_id': code_id,
                 'message': 'Script has been stopped'
             }
         else:
             raise HTTPException(
                 status_code=404, 
-                detail=f"Script {script_id} does not exist or has already ended"
+                detail=f"Script {code_id} does not exist or has already ended"
             )
             
     except HTTPException:

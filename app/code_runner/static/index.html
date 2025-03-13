@@ -179,8 +179,8 @@
         const statusDiv = document.getElementById('status');
         const examplesDropdown = document.getElementById('examples');
 
-        // Current script ID
-        let currentScriptId = null;
+        // Current code ID
+        let currentCodeId = null;
         let eventSource = null;
         let statusInterval = null;
 
@@ -272,15 +272,15 @@
                 }
                 
                 const data = await response.json();
-                currentScriptId = data.script_id;
+                currentCodeId = data.code_id;
                 
-                addLogMessage(`Script started with ID: ${currentScriptId}`, 'info');
+                addLogMessage(`Script started with ID: ${currentCodeId}`, 'info');
                 
                 // Start streaming logs
-                streamLogs(currentScriptId);
+                streamLogs(currentCodeId);
                 
                 // Start polling for status
-                pollStatus(currentScriptId);
+                pollStatus(currentCodeId);
                 
             } catch (error) {
                 console.error('Error running code:', error);
@@ -296,10 +296,10 @@
 
         // Stop execution
         stopBtn.addEventListener('click', async () => {
-            if (!currentScriptId) return;
+            if (!currentCodeId) return;
             
             try {
-                const response = await fetch(`/api/stop/${currentScriptId}`, {
+                const response = await fetch(`/api/stop/${currentCodeId}`, {
                     method: 'POST'
                 });
                 
@@ -331,14 +331,14 @@
         });
 
         // Stream logs
-        function streamLogs(scriptId) {
+        function streamLogs(codeId) {
             // Close previous event source if exists
             if (eventSource) {
                 eventSource.close();
             }
             
             // Create new event source
-            eventSource = new EventSource(`/api/stream-logs/${scriptId}`);
+            eventSource = new EventSource(`/api/stream-logs/${codeId}`);
             
             // Handle messages
             eventSource.onmessage = (event) => {
@@ -380,7 +380,7 @@
         }
 
         // Poll status
-        function pollStatus(scriptId) {
+        function pollStatus(codeId) {
             // Clear previous interval if exists
             if (statusInterval) {
                 clearInterval(statusInterval);
@@ -395,7 +395,7 @@
                         return;
                     }
                     
-                    const response = await fetch(`/api/status/${scriptId}`);
+                    const response = await fetch(`/api/status/${codeId}`);
                     
                     if (!response.ok) {
                         throw new Error(`API error: ${response.status}`);
