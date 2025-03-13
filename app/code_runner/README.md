@@ -8,13 +8,14 @@ This package provides an API interface for running Python scripts, can solve dep
 2. **Dependency Management**: Automatically parse and install dependencies required by scripts
 3. **Real-time Logging**: Provides real-time log streaming to monitor script execution status
 4. **Script Management**: Manage running scripts, view status and stop execution
+5. **Web Interface**: Includes a web interface for running scripts and viewing logs in real-time
 
 ## Installation
 
 Make sure you have the required dependencies installed:
 
 ```bash
-pip install flask
+pip install fastapi uvicorn pydantic
 ```
 
 ## Usage
@@ -32,6 +33,17 @@ Run a Python script:
 ```bash
 python -m app.code_runner.cli run script.py
 ```
+
+### Web Interface
+
+The package includes a web interface for running scripts and viewing logs. To access it, start the API service and navigate to `http://localhost:5000` in your browser.
+
+The web interface allows you to:
+- Write or paste Python code
+- Select from predefined examples
+- Run scripts and view real-time logs
+- Stop running scripts
+- Clear logs
 
 ### API Interface
 
@@ -61,7 +73,7 @@ Response:
 #### Get Logs
 
 ```
-GET /api/logs/<script_id>
+GET /api/logs/{script_id}
 ```
 
 Response:
@@ -75,7 +87,7 @@ Response:
 #### Stream Logs
 
 ```
-GET /api/stream-logs/<script_id>
+GET /api/stream-logs/{script_id}
 ```
 
 Response: Event stream
@@ -83,7 +95,7 @@ Response: Event stream
 #### Get Script Status
 
 ```
-GET /api/status/<script_id>
+GET /api/status/{script_id}
 ```
 
 Response:
@@ -99,7 +111,7 @@ Response:
 #### Stop Script
 
 ```
-POST /api/stop/<script_id>
+POST /api/stop/{script_id}
 ```
 
 Response:
@@ -108,6 +120,45 @@ Response:
 {
     "script_id": "script_id",
     "message": "Script has been stopped"
+}
+```
+
+#### Get Examples
+
+```
+GET /api/examples
+```
+
+Response:
+
+```json
+{
+    "hello_world": {
+        "name": "Hello World Example",
+        "description": "A simple Hello World example that generates a lot of logs",
+        "code": "..."
+    },
+    "data_processing": {
+        "name": "Data Processing Example",
+        "description": "A data processing example using pandas and numpy",
+        "code": "..."
+    }
+}
+```
+
+#### Get Specific Example
+
+```
+GET /api/example/{example_id}
+```
+
+Response:
+
+```json
+{
+    "name": "Example Name",
+    "description": "Example description",
+    "code": "..."
 }
 ```
 
@@ -137,38 +188,22 @@ logs = logs_response.json()['logs']
 print(logs)
 ```
 
-## Frontend Integration
+## Technical Details
 
-You can use the following JavaScript code to display logs in real-time on the frontend:
+### FastAPI Implementation
 
-```javascript
-function streamLogs(scriptId) {
-    const logContainer = document.getElementById('logs');
-    const eventSource = new EventSource(`/api/stream-logs/${scriptId}`);
-    
-    eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        const logElement = document.createElement('div');
-        logElement.textContent = data.log;
-        logContainer.appendChild(logElement);
-        
-        // Auto-scroll to bottom
-        logContainer.scrollTop = logContainer.scrollHeight;
-        
-        // If script has ended, close event source
-        if (data.finished) {
-            eventSource.close();
-        }
-    };
-    
-    eventSource.onerror = function() {
-        eventSource.close();
-    };
-}
-```
+This package uses FastAPI for the API interface, which provides:
+- Modern, fast API framework based on standard Python type hints
+- Automatic API documentation (Swagger UI) at `/docs`
+- High performance with async support
+- Easy to use and extend
+
+### Real-time Logging
+
+The real-time logging is implemented using Server-Sent Events (SSE), which allows the server to push updates to the client in real-time.
 
 ## Notes
 
 - Running untrusted code may pose security risks, please ensure use in a secure environment
 - Dependency installation requires network connection and appropriate permissions
-- Long-running scripts may consume significant resources 
+- Long-running scripts may consume significant resources

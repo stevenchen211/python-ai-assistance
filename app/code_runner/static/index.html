@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Code Runner</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .code-editor {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .log-viewer {
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        textarea {
+            flex: 1;
+            padding: 10px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+        }
+        .logs {
+            flex: 1;
+            padding: 10px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            border: none;
+            border-radius: 4px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .logs .info {
+            color: #4fc3f7;
+        }
+        .logs .warning {
+            color: #ffb74d;
+        }
+        .logs .error {
+            color: #ef5350;
+        }
+        .logs .success {
+            color: #66bb6a;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .run-btn {
+            background-color: #4caf50;
+            color: white;
+        }
+        .run-btn:hover {
+            background-color: #388e3c;
+        }
+        .stop-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        .stop-btn:hover {
+            background-color: #d32f2f;
+        }
+        .clear-btn {
+            background-color: #2196f3;
+            color: white;
+        }
+        .clear-btn:hover {
+            background-color: #1976d2;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .running {
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+        .finished {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .error-status {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .examples-dropdown {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Python Code Runner</h1>
+    <div class="container">
+        <div class="code-editor">
+            <div class="examples-dropdown">
+                <select id="examples">
+                    <option value="">Select an example</option>
+                    <option value="hello_world">Hello World Example</option>
+                    <option value="data_processing">Data Processing Example</option>
+                </select>
+            </div>
+            <textarea id="code" placeholder="Enter your Python code here..."></textarea>
+            <div class="button-group">
+                <button class="run-btn" id="run-btn">Run Code</button>
+                <button class="stop-btn" id="stop-btn" disabled>Stop Execution</button>
+                <button class="clear-btn" id="clear-btn">Clear Logs</button>
+            </div>
+        </div>
+        <div class="log-viewer">
+            <div class="logs" id="logs"></div>
+            <div class="status" id="status">Ready to run code</div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const codeEditor = document.getElementById('code');
+        const logsContainer = document.getElementById('logs');
+        const runBtn = document.getElementById('run-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const statusDiv = document.getElementById('status');
+        const examplesDropdown = document.getElementById('examples');
+
+        // Current script ID
+        let currentScriptId = null;
+        let eventSource = null;
+
+        // Load examples
+        async function loadExamples() {
+            try {
+                const response = await fetch('/api/examples');
+                const examples = await response.json();
+                
+                // Store examples data
+                window.examplesData = examples;
+            } catch (error) {
+                console.error('Error loading examples:', error);
+            }
+        }
+
+        // Handle example selection
+        examplesDropdown.addEventListener('change', async (e) => {
+            const exampleKey = e.target.value;
+            if (!exampleKey) return;
+            
+            try {
+                if (!window.examplesData) {
+                    // Fetch examples if not already loaded
+                    await loadExamples();
+                }
+                
+                if (window.examplesData && window.examplesData[exampleKey]) {
+                    codeEditor.value = window.examplesData[exampleKey].code;
+                } else {
+                    // Fallback to direct API call for specific example
+                    const response = await fetch(`/api/example/${exampleKey}`);
+                    const example = await response.json();
+                    codeEditor.value = example.code;
+                }
+            } catch (error) {
+                console.error('Error loading example:', error);
+                addLogMessage(`Error loading example: ${error.message}`, 'error');
+            }
+        });
+
+        // Run code
+        runBtn.addEventListener('click', async () => {
+            const code = codeEditor.value.trim();
+            if (!code) {
+                addLogMessage('Please enter some code to run', 'error');
+                return;
+            }
+
+            try {
+                // Clear previous logs
+                logsContainer.innerHTML = '';
+                
+                // Update UI
+                runBtn.disabled = true;
+                stopBtn.disabled = false;
+                statusDiv.textContent = 'Running...';
+                statusDiv.className = 'status running';
+                
+                // Send code to API
+                const response = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                currentScriptId = data.script_id;
+                
+                addLogMessage(`Script started with ID: ${currentScriptId}`, 'info');
+                
+                // Start streaming logs
+                streamLogs(currentScriptId);
+                
+                // Start polling for status
+                pollStatus(currentScriptId);
+                
+            } catch (error) {
+                console.error('Error running code:', error);
+                addLogMessage(`Error running code: ${error.message}`, 'error');
+                
+                // Reset UI
+                runBtn.disabled = false;
+                stopBtn.disabled = true;
+                statusDiv.textContent = 'Error';
+                statusDiv.className = 'status error-status';
+            }
+        });
+
+        // Stop execution
+        stopBtn.addEventListener('click', async () => {
+            if (!currentScriptId) return;
+            
+            try {
+                const response = await fetch(`/api/stop/${currentScriptId}`, {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                addLogMessage(data.message, 'info');
+                
+                // Close event source
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+                
+                // Update UI
+                runBtn.disabled = false;
+                stopBtn.disabled = true;
+                statusDiv.textContent = 'Stopped';
+                statusDiv.className = 'status finished';
+                
+            } catch (error) {
+                console.error('Error stopping script:', error);
+                addLogMessage(`Error stopping script: ${error.message}`, 'error');
+            }
+        });
+
+        // Clear logs
+        clearBtn.addEventListener('click', () => {
+            logsContainer.innerHTML = '';
+        });
+
+        // Stream logs
+        function streamLogs(scriptId) {
+            // Close previous event source if exists
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            // Create new event source
+            eventSource = new EventSource(`/api/stream-logs/${scriptId}`);
+            
+            // Handle messages
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                // Add log message
+                addLogMessage(data.log);
+                
+                // Check if script has finished
+                if (data.finished) {
+                    eventSource.close();
+                    eventSource = null;
+                    
+                    // Update UI
+                    runBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    statusDiv.textContent = 'Finished';
+                    statusDiv.className = 'status finished';
+                }
+            };
+            
+            // Handle errors
+            eventSource.onerror = () => {
+                eventSource.close();
+                eventSource = null;
+                
+                // Update UI if not already updated
+                if (statusDiv.textContent === 'Running...') {
+                    statusDiv.textContent = 'Connection lost';
+                    statusDiv.className = 'status error-status';
+                    runBtn.disabled = false;
+                    stopBtn.disabled = true;
+                }
+            };
+        }
+
+        // Poll status
+        function pollStatus(scriptId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/status/${scriptId}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+                    
+                    const status = await response.json();
+                    
+                    // Check if script has finished
+                    if (status.status === 'finished') {
+                        clearInterval(interval);
+                        
+                        // Update UI if not already updated
+                        if (statusDiv.textContent === 'Running...') {
+                            statusDiv.textContent = 'Finished';
+                            statusDiv.className = 'status finished';
+                            runBtn.disabled = false;
+                            stopBtn.disabled = true;
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('Error polling status:', error);
+                    clearInterval(interval);
+                }
+            }, 2000);
+        }
+
+        // Add log message to container
+        function addLogMessage(message, type = '') {
+            const logElement = document.createElement('div');
+            
+            // Apply styling based on message content
+            if (type) {
+                logElement.classList.add(type);
+            } else if (message.includes('ERROR:')) {
+                logElement.classList.add('error');
+            } else if (message.includes('WARNING:')) {
+                logElement.classList.add('warning');
+            } else if (message.includes('INFO:')) {
+                logElement.classList.add('info');
+            } else if (message.includes('completed') || message.includes('success')) {
+                logElement.classList.add('success');
+            }
+            
+            logElement.textContent = message;
+            logsContainer.appendChild(logElement);
+            
+            // Auto-scroll to bottom
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        // Load examples on page load
+        loadExamples();
+    </script>
+</body>
+</html> 

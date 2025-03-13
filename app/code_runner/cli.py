@@ -36,6 +36,7 @@ def parse_args():
     api_parser.add_argument('--port', type=int, default=5000, help='Port number')
     api_parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     api_parser.add_argument('--venv', help='Virtual environment path')
+    api_parser.add_argument('--static', help='Static files directory path')
     
     return parser.parse_args()
 
@@ -88,8 +89,8 @@ def main():
     if args.command == 'run':
         run_script(args.file, args.venv)
     elif args.command == 'api':
-        logger.info(f"Starting API service, address: {args.host}:{args.port}")
-        start_api(host=args.host, port=args.port, debug=args.debug)
+        logger.info(f"Starting FastAPI service, address: {args.host}:{args.port}")
+        start_api(host=args.host, port=args.port, debug=args.debug, static_dir=args.static)
     else:
         logger.error("No command specified, please use 'run' or 'api' command")
         sys.exit(1)
