@@ -182,6 +182,7 @@
         // Current script ID
         let currentScriptId = null;
         let eventSource = null;
+        let statusInterval = null;
 
         // Load examples
         async function loadExamples() {
@@ -221,6 +222,21 @@
             }
         });
 
+        // Clean up any existing resources
+        function cleanupResources() {
+            // Close event source if exists
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            // Clear status polling interval if exists
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+
         // Run code
         runBtn.addEventListener('click', async () => {
             const code = codeEditor.value.trim();
@@ -230,6 +246,9 @@
             }
 
             try {
+                // Clean up any existing resources
+                cleanupResources();
+                
                 // Clear previous logs
                 logsContainer.innerHTML = '';
                 
@@ -291,11 +310,8 @@
                 const data = await response.json();
                 addLogMessage(data.message, 'info');
                 
-                // Close event source
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
+                // Clean up resources
+                cleanupResources();
                 
                 // Update UI
                 runBtn.disabled = false;
@@ -333,21 +349,23 @@
                 
                 // Check if script has finished
                 if (data.finished) {
-                    eventSource.close();
-                    eventSource = null;
+                    // Clean up resources
+                    cleanupResources();
                     
                     // Update UI
                     runBtn.disabled = false;
                     stopBtn.disabled = true;
                     statusDiv.textContent = 'Finished';
                     statusDiv.className = 'status finished';
+                    
+                    addLogMessage("Log streaming completed", "success");
                 }
             };
             
             // Handle errors
             eventSource.onerror = () => {
-                eventSource.close();
-                eventSource = null;
+                // Clean up resources
+                cleanupResources();
                 
                 // Update UI if not already updated
                 if (statusDiv.textContent === 'Running...') {
@@ -355,14 +373,28 @@
                     statusDiv.className = 'status error-status';
                     runBtn.disabled = false;
                     stopBtn.disabled = true;
+                    
+                    addLogMessage("Log streaming connection lost", "error");
                 }
             };
         }
 
         // Poll status
         function pollStatus(scriptId) {
-            const interval = setInterval(async () => {
+            // Clear previous interval if exists
+            if (statusInterval) {
+                clearInterval(statusInterval);
+            }
+            
+            statusInterval = setInterval(async () => {
                 try {
+                    // Skip if event source is already closed
+                    if (!eventSource) {
+                        clearInterval(statusInterval);
+                        statusInterval = null;
+                        return;
+                    }
+                    
                     const response = await fetch(`/api/status/${scriptId}`);
                     
                     if (!response.ok) {
@@ -373,7 +405,8 @@
                     
                     // Check if script has finished
                     if (status.status === 'finished') {
-                        clearInterval(interval);
+                        // Clean up resources
+                        cleanupResources();
                         
                         // Update UI if not already updated
                         if (statusDiv.textContent === 'Running...') {
@@ -381,12 +414,15 @@
                             statusDiv.className = 'status finished';
                             runBtn.disabled = false;
                             stopBtn.disabled = true;
+                            
+                            addLogMessage("Script execution completed", "success");
                         }
                     }
                     
                 } catch (error) {
                     console.error('Error polling status:', error);
-                    clearInterval(interval);
+                    clearInterval(statusInterval);
+                    statusInterval = null;
                 }
             }, 2000);
         }
