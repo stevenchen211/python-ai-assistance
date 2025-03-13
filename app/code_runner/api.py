@@ -47,6 +47,7 @@ script_logs = {}
 # Define request and response models
 class CodeRequest(BaseModel):
     code: str
+    skip_dependencies: bool = False
 
 class ScriptResponse(BaseModel):
     code_id: str
@@ -115,7 +116,8 @@ async def run_script(code_request: CodeRequest):
     
     Request body:
     {
-        "code": "Python code"
+        "code": "Python code",
+        "skip_dependencies": false
     }
     
     Response:
@@ -126,6 +128,7 @@ async def run_script(code_request: CodeRequest):
     """
     try:
         code = code_request.code
+        skip_dependencies = code_request.skip_dependencies
         
         # Initialize log list
         code_id = None
@@ -138,7 +141,7 @@ async def run_script(code_request: CodeRequest):
                 script_logs[code_id].append(message)
         
         # Run script
-        code_id = script_runner.run_script(code, log_callback)
+        code_id = script_runner.run_script(code, log_callback, skip_dependencies)
         
         # Initialize logs
         if code_id not in script_logs:
@@ -197,29 +200,48 @@ async def stream_logs(code_id: str):
         
         log_index = 0
         
+        # 初始等待时间短，提高响应速度
+        wait_time = 0.1
+        
         while True:
-            # Get new logs
-            new_logs = script_runner.get_logs(code_id)
-            
-            # Add to log storage
-            script_logs[code_id].extend(new_logs)
-            
-            # Send new logs
-            current_logs = script_logs[code_id]
-            while log_index < len(current_logs):
-                log = current_logs[log_index]
-                log_index += 1
-                yield f"data: {json.dumps({'log': log})}\n\n"
-            
-            # Check if script has ended
-            status = script_runner.get_script_status(code_id)
-            if status['status'] == 'finished':
-                return_code = status.get('return_code')
-                yield f"data: {json.dumps({'log': f'Script has ended, return code: {return_code}', 'finished': True})}\n\n"
+            try:
+                # Get new logs
+                new_logs = script_runner.get_logs(code_id)
+                
+                # 有新日志时立即发送
+                has_new_logs = len(new_logs) > 0
+                
+                # Add to log storage
+                script_logs[code_id].extend(new_logs)
+                
+                # Send new logs
+                current_logs = script_logs[code_id]
+                while log_index < len(current_logs):
+                    log = current_logs[log_index]
+                    log_index += 1
+                    yield f"data: {json.dumps({'log': log})}\n\n"
+                
+                # Check if script has ended
+                status = script_runner.get_script_status(code_id)
+                if status['status'] == 'finished' or status['status'] == 'not_found':
+                    return_code = status.get('return_code', 0)
+                    yield f"data: {json.dumps({'log': f'Script has ended, return code: {return_code}', 'finished': True})}\n\n"
+                    break
+                
+                # 动态调整等待时间：有日志时快速响应，无日志时逐渐增加等待时间
+                if has_new_logs:
+                    # 有新日志，保持较短的等待时间
+                    wait_time = 0.1
+                else:
+                    # 无新日志，逐渐增加等待时间，但不超过0.5秒
+                    wait_time = min(wait_time * 1.2, 0.5)
+                
+                # Wait for a while
+                await asyncio.sleep(wait_time)
+            except Exception as e:
+                logger.error(f"Error in stream logs: {str(e)}")
+                yield f"data: {json.dumps({'log': f'Error in stream logs: {str(e)}', 'finished': True})}\n\n"
                 break
-            
-            # Wait for a while
-            await asyncio.sleep(0.5)
     
     return StreamingResponse(
         generate(),

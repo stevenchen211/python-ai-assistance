@@ -125,11 +125,30 @@ class DependencyManager:
                 log_callback("No dependencies detected to install")
             return True
         
+        # 检查是否已安装
+        packages_to_install = set()
+        for package in packages:
+            try:
+                # 尝试导入包
+                __import__(package)
+                if log_callback:
+                    log_callback(f"Package {package} is already installed")
+            except ImportError:
+                packages_to_install.add(package)
+                if log_callback:
+                    log_callback(f"Package {package} is not installed, will attempt to install")
+        
+        if not packages_to_install:
+            if log_callback:
+                log_callback("All dependencies are already installed")
+            return True
+        
         # Build pip install command
-        pip_cmd = f"{self.pip_executable} install {' '.join(packages)}"
+        pip_cmd = f"{self.pip_executable} install {' '.join(packages_to_install)}"
         
         if log_callback:
-            log_callback(f"Installing dependencies: {', '.join(packages)}")
+            log_callback(f"Installing dependencies: {', '.join(packages_to_install)}")
+            log_callback(f"Running command: {pip_cmd}")
         
         try:
             # Execute pip install

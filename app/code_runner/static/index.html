@@ -143,6 +143,18 @@
             border: 1px solid #ddd;
             width: 100%;
         }
+        .options {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .options label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .options input[type="checkbox"] {
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
@@ -157,6 +169,12 @@
                 </select>
             </div>
             <textarea id="code" placeholder="Enter your Python code here..."></textarea>
+            <div class="options">
+                <label>
+                    <input type="checkbox" id="skip-dependencies" />
+                    Skip dependency installation (use if dependencies are already installed)
+                </label>
+            </div>
             <div class="button-group">
                 <button class="run-btn" id="run-btn">Run Code</button>
                 <button class="stop-btn" id="stop-btn" disabled>Stop Execution</button>
@@ -183,6 +201,11 @@
         let currentCodeId = null;
         let eventSource = null;
         let statusInterval = null;
+        
+        // 日志缓冲区和更新控制
+        let logBuffer = [];
+        let isUpdatingLogs = false;
+        let logUpdateInterval = null;
 
         // Load examples
         async function loadExamples() {
@@ -235,6 +258,57 @@
                 clearInterval(statusInterval);
                 statusInterval = null;
             }
+            
+            // 清理日志更新间隔
+            if (logUpdateInterval) {
+                clearInterval(logUpdateInterval);
+                logUpdateInterval = null;
+            }
+            
+            // 刷新剩余的日志缓冲区
+            flushLogBuffer(true);
+            logBuffer = [];
+        }
+        
+        // 批量更新日志显示
+        function flushLogBuffer(force = false) {
+            if (logBuffer.length === 0 || (isUpdatingLogs && !force)) return;
+            
+            isUpdatingLogs = true;
+            
+            // 创建文档片段以提高性能
+            const fragment = document.createDocumentFragment();
+            
+            // 处理缓冲区中的所有日志
+            logBuffer.forEach(item => {
+                const logElement = document.createElement('div');
+                
+                // 应用样式
+                if (item.type) {
+                    logElement.classList.add(item.type);
+                } else if (item.message.includes('ERROR:')) {
+                    logElement.classList.add('error');
+                } else if (item.message.includes('WARNING:')) {
+                    logElement.classList.add('warning');
+                } else if (item.message.includes('INFO:')) {
+                    logElement.classList.add('info');
+                } else if (item.message.includes('completed') || item.message.includes('success')) {
+                    logElement.classList.add('success');
+                }
+                
+                logElement.textContent = item.message;
+                fragment.appendChild(logElement);
+            });
+            
+            // 一次性添加所有日志
+            logsContainer.appendChild(fragment);
+            
+            // 自动滚动到底部
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+            
+            // 清空缓冲区
+            logBuffer = [];
+            isUpdatingLogs = false;
         }
 
         // Run code
@@ -258,13 +332,22 @@
                 statusDiv.textContent = 'Running...';
                 statusDiv.className = 'status running';
                 
+                // 启动日志更新间隔
+                logUpdateInterval = setInterval(() => flushLogBuffer(), 50); // 每50ms更新一次日志显示
+                
+                // Get skip dependencies option
+                const skipDependencies = document.getElementById('skip-dependencies').checked;
+                
                 // Send code to API
                 const response = await fetch('/api/run', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ code })
+                    body: JSON.stringify({ 
+                        code,
+                        skip_dependencies: skipDependencies
+                    })
                 });
                 
                 if (!response.ok) {
@@ -303,14 +386,17 @@
                     method: 'POST'
                 });
                 
-                if (!response.ok) {
+                if (response.ok) {
+                    const data = await response.json();
+                    addLogMessage(data.message, 'info');
+                } else if (response.status === 404) {
+                    // 脚本可能已经结束或不存在，这是正常情况
+                    addLogMessage("Script has already ended or does not exist", 'info');
+                } else {
                     throw new Error(`API error: ${response.status}`);
                 }
                 
-                const data = await response.json();
-                addLogMessage(data.message, 'info');
-                
-                // Clean up resources
+                // 无论如何都清理资源并更新UI
                 cleanupResources();
                 
                 // Update UI
@@ -322,12 +408,17 @@
             } catch (error) {
                 console.error('Error stopping script:', error);
                 addLogMessage(`Error stopping script: ${error.message}`, 'error');
+                
+                // 即使出错也更新UI
+                runBtn.disabled = false;
+                stopBtn.disabled = true;
             }
         });
 
         // Clear logs
         clearBtn.addEventListener('click', () => {
             logsContainer.innerHTML = '';
+            logBuffer = [];
         });
 
         // Stream logs
@@ -397,30 +488,42 @@
                     
                     const response = await fetch(`/api/status/${codeId}`);
                     
-                    if (!response.ok) {
-                        throw new Error(`API error: ${response.status}`);
-                    }
-                    
-                    const status = await response.json();
-                    
-                    // Check if script has finished
-                    if (status.status === 'finished') {
-                        // Clean up resources
+                    if (response.ok) {
+                        const status = await response.json();
+                        
+                        // Check if script has finished
+                        if (status.status === 'finished' || status.status === 'not_found') {
+                            // Clean up resources
+                            cleanupResources();
+                            
+                            // Update UI if not already updated
+                            if (statusDiv.textContent === 'Running...') {
+                                statusDiv.textContent = 'Finished';
+                                statusDiv.className = 'status finished';
+                                runBtn.disabled = false;
+                                stopBtn.disabled = true;
+                                
+                                addLogMessage("Script execution completed", "success");
+                            }
+                        }
+                    } else if (response.status === 404) {
+                        // 脚本不存在或已结束，清理资源
                         cleanupResources();
                         
-                        // Update UI if not already updated
+                        // 更新UI
                         if (statusDiv.textContent === 'Running...') {
                             statusDiv.textContent = 'Finished';
                             statusDiv.className = 'status finished';
                             runBtn.disabled = false;
                             stopBtn.disabled = true;
-                            
-                            addLogMessage("Script execution completed", "success");
                         }
+                    } else {
+                        throw new Error(`API error: ${response.status}`);
                     }
                     
                 } catch (error) {
                     console.error('Error polling status:', error);
+                    // 即使出错也清理资源
                     clearInterval(statusInterval);
                     statusInterval = null;
                 }
@@ -429,26 +532,13 @@
 
         // Add log message to container
         function addLogMessage(message, type = '') {
-            const logElement = document.createElement('div');
+            // 将日志添加到缓冲区
+            logBuffer.push({ message, type });
             
-            // Apply styling based on message content
-            if (type) {
-                logElement.classList.add(type);
-            } else if (message.includes('ERROR:')) {
-                logElement.classList.add('error');
-            } else if (message.includes('WARNING:')) {
-                logElement.classList.add('warning');
-            } else if (message.includes('INFO:')) {
-                logElement.classList.add('info');
-            } else if (message.includes('completed') || message.includes('success')) {
-                logElement.classList.add('success');
+            // 如果缓冲区太大，立即刷新
+            if (logBuffer.length >= 10) {
+                flushLogBuffer();
             }
-            
-            logElement.textContent = message;
-            logsContainer.appendChild(logElement);
-            
-            // Auto-scroll to bottom
-            logsContainer.scrollTop = logsContainer.scrollHeight;
         }
 
         // Load examples on page load

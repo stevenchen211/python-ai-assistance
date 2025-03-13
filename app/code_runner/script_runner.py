@@ -79,12 +79,31 @@ class ScriptRunner:
             output_queue: Output queue
             script_id: Script ID
         """
-        for line in iter(process.stdout.readline, ''):
-            if not line:
-                break
-            output_queue.put((script_id, line.strip()))
-        
-        process.stdout.close()
+        try:
+            output_queue.put((script_id, "DEBUG: Starting to read stdout"))
+            
+            while True:
+                # 读取输出流
+                output = process.stdout.readline()
+                if not output:
+                    # 检查是否还有数据可读
+                    if process.poll() is not None:
+                        output_queue.put((script_id, f"DEBUG: Process ended with return code: {process.poll()}"))
+                        break
+                    # 短暂等待新数据
+                    time.sleep(0.01)
+                    continue
+                
+                # 处理输出
+                line = output.strip()
+                if line:
+                    output_queue.put((script_id, line))
+            
+            output_queue.put((script_id, "DEBUG: Finished reading stdout"))
+        except Exception as e:
+            output_queue.put((script_id, f"Error reading output: {str(e)}"))
+        finally:
+            process.stdout.close()
     
     def _read_error(self, process, output_queue: Queue, script_id: str):
         """
@@ -95,20 +114,40 @@ class ScriptRunner:
             output_queue: Output queue
             script_id: Script ID
         """
-        for line in iter(process.stderr.readline, ''):
-            if not line:
-                break
-            output_queue.put((script_id, f"ERROR: {line.strip()}"))
-        
-        process.stderr.close()
+        try:
+            output_queue.put((script_id, "DEBUG: Starting to read stderr"))
+            
+            while True:
+                # 读取错误流
+                error = process.stderr.readline()
+                if not error:
+                    # 检查是否还有数据可读
+                    if process.poll() is not None:
+                        output_queue.put((script_id, f"DEBUG: Process stderr ended with return code: {process.poll()}"))
+                        break
+                    # 短暂等待新数据
+                    time.sleep(0.01)
+                    continue
+                
+                # 处理错误输出
+                line = error.strip()
+                if line:
+                    output_queue.put((script_id, f"ERROR: {line}"))
+            
+            output_queue.put((script_id, "DEBUG: Finished reading stderr"))
+        except Exception as e:
+            output_queue.put((script_id, f"Error reading error stream: {str(e)}"))
+        finally:
+            process.stderr.close()
     
-    def run_script(self, code: str, log_callback: Optional[Callable[[str], None]] = None) -> str:
+    def run_script(self, code: str, log_callback: Optional[Callable[[str], None]] = None, skip_dependencies: bool = False) -> str:
         """
         Run Python script
         
         Args:
             code: Python code
             log_callback: Log callback function
+            skip_dependencies: Whether to skip dependency installation
             
         Returns:
             Script ID
@@ -121,19 +160,28 @@ class ScriptRunner:
             log_callback(f"Script saved to: {script_path}")
         
         # Prepare script environment
-        if not self.dependency_manager.prepare_script(code, log_callback):
+        if not skip_dependencies:
+            if not self.dependency_manager.prepare_script(code, log_callback):
+                if log_callback:
+                    log_callback("Failed to prepare script environment, cannot run script")
+                return script_id
+        else:
             if log_callback:
-                log_callback("Failed to prepare script environment, cannot run script")
-            return script_id
+                log_callback("Skipping dependency installation")
         
         # Get Python executable path
         python_executable = self.dependency_manager.python_executable
+        if log_callback:
+            log_callback(f"Using Python executable: {python_executable}")
         
         # Create output queue
         output_queue = Queue()
         
         try:
             # Start process
+            if log_callback:
+                log_callback(f"Starting process: {python_executable} {script_path}")
+            
             process = subprocess.Popen(
                 [python_executable, script_path],
                 stdout=subprocess.PIPE,
@@ -160,9 +208,15 @@ class ScriptRunner:
             stdout_thread.daemon = True
             stderr_thread.daemon = True
             
+            if log_callback:
+                log_callback("Starting output reader threads")
+            
             # Start threads
             stdout_thread.start()
             stderr_thread.start()
+            
+            if log_callback:
+                log_callback("Output reader threads started")
             
             # Save process information
             self.running_scripts[script_id] = {
@@ -182,7 +236,7 @@ class ScriptRunner:
             logger.error(error_msg)
             return script_id
     
-    def get_logs(self, script_id: str, timeout: float = 0.1) -> List[str]:
+    def get_logs(self, script_id: str, timeout: float = 0.01) -> List[str]:
         """
         Get script logs
         
@@ -201,19 +255,37 @@ class ScriptRunner:
         logs = []
         
         try:
-            while True:
+            # 设置最大尝试次数，避免阻塞太久
+            max_attempts = 100
+            attempts = 0
+            queue_size = output_queue.qsize()
+            logs.append(f"DEBUG: Queue size: {queue_size}")
+            
+            while attempts < max_attempts:
+                attempts += 1
                 try:
-                    # Get log from queue
-                    _, log = output_queue.get(block=True, timeout=timeout)
+                    # 非阻塞方式获取日志
+                    _, log = output_queue.get(block=False)
                     logs.append(log)
+                    
+                    # 如果队列中还有更多日志，继续获取
+                    if output_queue.qsize() == 0:
+                        # 队列为空，短暂等待看是否有新日志
+                        time.sleep(timeout)
                 except Empty:
-                    # Queue is empty, check if process has ended
+                    # 队列为空，检查进程是否已结束
                     if not script_info['process'].poll() is None:
-                        # Process has ended
+                        # 进程已结束
                         return_code = script_info['process'].poll()
+                        logs.append(f"DEBUG: Process has ended with return code: {return_code}")
                         logs.append(f"Script has ended, return code: {return_code}")
                         
-                        # Clean up resources
+                        # 检查线程状态
+                        stdout_alive = script_info['stdout_thread'].is_alive()
+                        stderr_alive = script_info['stderr_thread'].is_alive()
+                        logs.append(f"DEBUG: stdout thread alive: {stdout_alive}, stderr thread alive: {stderr_alive}")
+                        
+                        # 清理资源
                         self._cleanup_script(script_id)
                     break
         except Exception as e:
