@@ -1,40 +1,40 @@
 """
-SAS外部依赖处理模块
+SAS External Dependency Handler Module
 """
 from typing import Dict, List, Any, Optional
 
 
 class DependencyHandler:
-    """SAS外部依赖处理器"""
+    """SAS External Dependency Handler"""
     
     def __init__(self, dependency_analysis: Optional[Dict[str, Any]] = None):
         """
-        初始化依赖处理器
+        Initialize dependency handler
         
         Args:
-            dependency_analysis: 依赖分析结果
+            dependency_analysis: Dependency analysis results
         """
         self.dependency_analysis = dependency_analysis or {}
     
     def generate_dependency_comments(self) -> str:
         """
-        生成依赖注释
+        Generate dependency comments
         
         Returns:
-            依赖注释代码
+            Dependency comment code
         """
         if not self.dependency_analysis or 'external_dependencies' not in self.dependency_analysis:
-            return "# 未检测到外部依赖"
+            return "# No external dependencies detected"
         
         external_deps = self.dependency_analysis.get('external_dependencies', [])
         
         if not external_deps:
-            return "# 未检测到外部依赖"
+            return "# No external dependencies detected"
         
-        comments = ["# ===== 外部依赖 =====", "# 以下是SAS代码中使用的外部依赖，需要手动处理"]
+        comments = ["# ===== External Dependencies =====", "# The following are external dependencies used in the SAS code that need manual handling"]
         
         for dep in external_deps:
-            comments.append(f"# TODO: 处理外部依赖 - {dep}")
+            comments.append(f"# TODO: Handle external dependency - {dep}")
         
         comments.append("# ==================")
         
@@ -42,13 +42,13 @@ class DependencyHandler:
     
     def mark_dependencies_in_code(self, code: str) -> str:
         """
-        在代码中标记依赖
+        Mark dependencies in code
         
         Args:
-            code: Python代码
+            code: Python code
             
         Returns:
-            标记依赖后的代码
+            Code with marked dependencies
         """
         if not self.dependency_analysis or 'external_dependencies' not in self.dependency_analysis:
             return code
@@ -58,7 +58,7 @@ class DependencyHandler:
         if not external_deps:
             return code
         
-        # 添加依赖注释到代码开头
+        # Add dependency comments to the beginning of the code
         dependency_comments = self.generate_dependency_comments()
         
         return f"{dependency_comments}\n\n{code}" 

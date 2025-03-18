@@ -1,71 +1,76 @@
 """
-SAS代码分块模块
+SAS Code Chunker Module
 
 功能：
 1. 提取SAS宏，并保留主体
 2. 根据输出令牌大小逻辑拆分主体
 """
 import re
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 
 
 class SASCodeChunker:
-    """SAS代码分块器"""
+    """SAS Code Chunker"""
 
     def __init__(self, max_token_size: int = 4000):
         """
-        初始化SAS代码分块器
+        Initialize SAS code chunker
         
         Args:
-            max_token_size: 每个块的最大令牌大小
+            max_token_size: Maximum token size for each chunk
         """
         self.max_token_size = max_token_size
         
-    def extract_macros(self, code: str, sas_filename: str = "") -> Tuple[Dict[str, str], str]:
+    def extract_macros(self, code: str, filename: str = "") -> Tuple[List[Dict[str, Any]], str]:
         """
-        从SAS代码中提取宏，并返回宏字典和剩余的主体代码
+        Extract macro definitions from SAS code
         
         Args:
-            code: SAS代码
-            sas_filename: SAS文件名，用于生成占位符
+            code: SAS code
+            filename: SAS file name for generating placeholders
             
         Returns:
-            宏字典和主体代码的元组
+            Tuple containing (list of macro definitions, main body code with macros removed)
         """
-        # 正则表达式匹配SAS宏定义
-        macro_pattern = r'%macro\s+(\w+)(?:\s*\(.*?\))?\s*;(.*?)%mend\s+\1\s*;'
-        macros = {}
+        macro_pattern = r'%macro\s+(\w+).*?%mend\s+\1\s*;'
+        macros = []
         
-        # 查找所有宏定义
-        for match in re.finditer(macro_pattern, code, re.DOTALL | re.IGNORECASE):
+        # Find all macros
+        main_body = code
+        for idx, match in enumerate(re.finditer(macro_pattern, code, re.IGNORECASE | re.DOTALL)):
             macro_name = match.group(1)
-            macro_body = match.group(2)
-            macros[macro_name] = macro_body
-        
-        # 从原始代码中移除宏定义，并添加占位符
-        def replace_with_placeholder(match):
-            macro_name = match.group(1)
-            placeholder = f"/* {sas_filename}_{macro_name} 宏定义占位符 */"
-            return placeholder
-        
-        main_body = re.sub(macro_pattern, replace_with_placeholder, code, flags=re.DOTALL | re.IGNORECASE)
+            macro_code = match.group(0)
+            
+            # Create placeholder
+            placeholder = f"/* MACRO_{idx}_{macro_name}_{filename} */"
+            
+            # Replace macro with placeholder in main body
+            main_body = main_body.replace(macro_code, placeholder)
+            
+            # Store macro information
+            macros.append({
+                'name': macro_name,
+                'code': macro_code,
+                'placeholder': placeholder,
+                'index': idx
+            })
         
         return macros, main_body
     
     def chunk_code(self, code: str) -> List[str]:
         """
-        将代码分块，确保每个块不超过最大令牌大小
+        Chunk code ensuring each chunk does not exceed maximum token size
         
         Args:
-            code: 要分块的代码
+            code: Code to chunk
             
         Returns:
-            代码块列表
+            List of code chunks
         """
-        # 简单估计：假设每个字符平均对应0.25个令牌
+        # Simple estimate: assume each character corresponds to 0.25 tokens
         chars_per_chunk = int(self.max_token_size * 4)
         
-        # 按照分号和换行符分割代码
+        # Split code by semicolons and newlines
         statements = re.split(r'(;|\n)', code)
         
         chunks = []
@@ -75,7 +80,7 @@ class SASCodeChunker:
         for statement in statements:
             statement_size = len(statement)
             
-            # 如果当前块加上新语句会超过限制，则开始新块
+            # If current chunk plus new statement exceeds limit, start new chunk
             if current_size + statement_size > chars_per_chunk and current_chunk:
                 chunks.append(''.join(current_chunk))
                 current_chunk = []
@@ -84,7 +89,7 @@ class SASCodeChunker:
             current_chunk.append(statement)
             current_size += statement_size
         
-        # 添加最后一个块
+        # Add the last chunk
         if current_chunk:
             chunks.append(''.join(current_chunk))
         
@@ -92,14 +97,14 @@ class SASCodeChunker:
     
     def process(self, code: str, sas_filename: str = "") -> Dict:
         """
-        处理SAS代码，提取宏并分块主体
+        Process SAS code, extract macros and chunk main body
         
         Args:
-            code: SAS代码
-            sas_filename: SAS文件名，用于生成占位符
+            code: SAS code
+            sas_filename: SAS file name for generating placeholders
             
         Returns:
-            包含宏和主体块的字典
+            Dictionary containing macros and main body chunks
         """
         macros, main_body = self.extract_macros(code, sas_filename)
         main_body_chunks = self.chunk_code(main_body)

@@ -1,88 +1,88 @@
-# SAS到Python转换器
+# SAS to Python Converter
 
-这个包提供了将SAS代码转换为Python代码的功能。它利用Azure OpenAI服务进行代码转换，并提供了一系列工具来处理SAS代码的各个方面。
+This package provides functionality to convert SAS code to Python code. It leverages Azure OpenAI services for code conversion and offers a series of tools to handle various aspects of SAS code.
 
-## 功能特点
+## Features
 
-1. **SAS宏转换**：将SAS宏转换为Python函数
-2. **主体代码转换**：将SAS主体代码转换为Python代码
-3. **SQL处理**：特殊处理SAS中的SQL代码
-4. **数据库连接**：根据数据源分析结果生成数据库连接代码
-5. **依赖处理**：识别并标记无法自动转换的外部依赖
-6. **代码合并**：合并转换后的代码，处理import语句
-7. **生成requirements.txt**：自动生成Python依赖列表
+1. **SAS Macro Conversion**: Convert SAS macros to Python functions
+2. **Main Code Conversion**: Convert SAS main body code to Python code
+3. **SQL Processing**: Special handling for SQL code within SAS
+4. **Database Connection**: Generate database connection code based on data source analysis results
+5. **Dependency Handling**: Identify and mark external dependencies that cannot be automatically converted
+6. **Code Merging**: Merge converted code, handle import statements
+7. **Generate requirements.txt**: Automatically generate Python dependency list
 
-## 安装
+## Installation
 
-确保已安装所需的依赖：
+Ensure you have installed the required dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 使用方法
+## Usage
 
-### 命令行使用
+### Command Line Usage
 
 ```bash
 python -m app.sas_converter.cli input_file.sas --output-dir output_directory --openai-api-key YOUR_OPENAI_API_KEY --azure-openai-api-key YOUR_AZURE_OPENAI_API_KEY
 ```
 
-参数说明：
-- `input_file.sas`：输入的SAS文件路径
-- `--output-dir`：输出目录路径，默认为"output"
-- `--openai-api-key`：OpenAI API密钥（用于分析）
-- `--azure-openai-api-key`：Azure OpenAI API密钥（用于转换）
+Parameter description:
+- `input_file.sas`: Path to the input SAS file
+- `--output-dir`: Output directory path, default is "output"
+- `--openai-api-key`: OpenAI API key (for analysis)
+- `--azure-openai-api-key`: Azure OpenAI API key (for conversion)
 
-### 代码中使用
+### Usage in Code
 
 ```python
 from app.sas_converter.converter import SASConverter
 
-# 初始化转换器
+# Initialize converter
 converter = SASConverter(
     openai_api_key="YOUR_OPENAI_API_KEY",
     azure_openai_api_key="YOUR_AZURE_OPENAI_API_KEY"
 )
 
-# 读取SAS代码
+# Read SAS code
 with open("input_file.sas", "r", encoding="utf-8") as f:
     sas_code = f.read()
 
-# 转换SAS代码
+# Convert SAS code
 result = converter.convert(sas_code, "input_file")
 
-# 保存输出
+# Save output
 converter.save_output(result, "output_directory", "input_file")
 ```
 
-## 输出结构
+## Output Structure
 
-转换后的输出将包含以下内容：
+The converted output will include the following:
 
-- `{base_filename}.py`：转换后的Python代码
-- `requirements.txt`：Python依赖列表
-- `functions/`：转换后的Python函数库
-- `analysis/`：SAS代码分析结果
+- `{base_filename}.py`: Converted Python code
+- `requirements.txt`: Python dependency list
+- `functions/`: Converted Python function library
+- `analysis/`: SAS code analysis results
 
-## 配置
+## Configuration
 
-转换器使用以下环境变量：
+The converter uses the following environment variables:
 
-- `OPENAI_API_KEY`：OpenAI API密钥（用于分析）
-- `AZURE_OPENAI_API_KEY`：Azure OpenAI API密钥（用于转换）
-- `AZURE_OPENAI_API_BASE`：Azure OpenAI API基础URL
-- `AZURE_OPENAI_API_VERSION`：Azure OpenAI API版本
-- `AZURE_OPENAI_DEPLOYMENT_NAME`：Azure OpenAI部署名称
+- `OPENAI_API_KEY`: OpenAI API key (for analysis)
+- `AZURE_OPENAI_API_KEY`: Azure OpenAI API key (for conversion)
+- `AZURE_OPENAI_API_BASE`: Azure OpenAI API base URL
+- `AZURE_OPENAI_API_VERSION`: Azure OpenAI API version
+- `AZURE_OPENAI_DEPLOYMENT_NAME`: Azure OpenAI deployment name
 
-您也可以在代码中直接指定这些值。
+You can also specify these values directly in the code.
 
-## 自定义提示
+## Custom Prompts
 
-转换器使用预定义的提示来指导AI进行代码转换。这些提示存储在`config.py`文件中，您可以根据需要进行修改。
+The converter uses predefined prompts to guide AI in code conversion. These prompts are stored in the `config.py` file, which you can modify as needed.
 
-## 注意事项
+## Notes
 
-- 转换后的代码可能需要手动调整，特别是对于复杂的SAS代码
-- 外部依赖需要手动处理
-- 数据库连接信息需要根据实际情况进行配置 
+- Converted code may require manual adjustment, especially for complex SAS code
+- External dependencies need to be handled manually
+- Database connection information needs to be configured according to actual circumstances 

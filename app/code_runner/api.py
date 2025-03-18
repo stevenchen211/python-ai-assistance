@@ -200,7 +200,7 @@ async def stream_logs(code_id: str):
         
         log_index = 0
         
-        # 初始等待时间短，提高响应速度
+        # Short initial wait time to improve responsiveness
         wait_time = 0.1
         
         while True:
@@ -208,7 +208,7 @@ async def stream_logs(code_id: str):
                 # Get new logs
                 new_logs = script_runner.get_logs(code_id)
                 
-                # 有新日志时立即发送
+                # Send immediately when there are new logs
                 has_new_logs = len(new_logs) > 0
                 
                 # Add to log storage
@@ -228,12 +228,12 @@ async def stream_logs(code_id: str):
                     yield f"data: {json.dumps({'log': f'Script has ended, return code: {return_code}', 'finished': True})}\n\n"
                     break
                 
-                # 动态调整等待时间：有日志时快速响应，无日志时逐渐增加等待时间
+                # Dynamically adjust wait time: quick response when there are logs, gradually increase wait time when there are no logs
                 if has_new_logs:
-                    # 有新日志，保持较短的等待时间
+                    # When there are new logs, keep the wait time short
                     wait_time = 0.1
                 else:
-                    # 无新日志，逐渐增加等待时间，但不超过0.5秒
+                    # No new logs, gradually increase wait time, but not exceeding 0.5 seconds
                     wait_time = min(wait_time * 1.2, 0.5)
                 
                 # Wait for a while

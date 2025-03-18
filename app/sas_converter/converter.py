@@ -1,5 +1,5 @@
 """
-SAS到Python转换器主模块
+SAS to Python Converter Main Module
 """
 import os
 from typing import Dict, List, Any, Optional
@@ -15,84 +15,84 @@ from .openai_client import AzureOpenAIClient
 
 
 class SASConverter:
-    """SAS到Python转换器"""
+    """SAS to Python Converter"""
     
     def __init__(self, openai_api_key: Optional[str] = None, azure_openai_api_key: Optional[str] = None):
         """
-        初始化SAS转换器
+        Initialize SAS converter
         
         Args:
-            openai_api_key: OpenAI API密钥（用于分析）
-            azure_openai_api_key: Azure OpenAI API密钥（用于转换）
+            openai_api_key: OpenAI API key (for analysis)
+            azure_openai_api_key: Azure OpenAI API key (for conversion)
         """
-        # 初始化OpenAI客户端
+        # Initialize OpenAI client
         self.openai_client = AzureOpenAIClient(api_key=azure_openai_api_key)
         
-        # 初始化分析器
+        # Initialize analyzers
         self.code_chunker = SASCodeChunker()
         self.data_source_analyzer = SASDataSourceAnalyzer(openai_api_key=openai_api_key)
         self.dependency_analyzer = SASDependencyAnalyzer(openai_api_key=openai_api_key)
         
-        # 初始化转换器
+        # Initialize converters
         self.macro_converter = MacroConverter(openai_client=self.openai_client)
         self.main_converter = MainConverter(openai_client=self.openai_client)
         self.code_merger = CodeMerger()
     
     def convert(self, sas_code: str, sas_filename: str = "") -> Dict[str, Any]:
         """
-        转换SAS代码为Python代码
+        Convert SAS code to Python code
         
         Args:
-            sas_code: SAS代码
-            sas_filename: SAS文件名
+            sas_code: SAS code
+            sas_filename: SAS filename
             
         Returns:
-            转换结果字典
+            Conversion result dictionary
         """
-        # 步骤1: 分析SAS代码
+        # Step 1: Analyze SAS code
         data_source_analysis = self.data_source_analyzer.analyze(sas_code)
         dependency_analysis = self.dependency_analyzer.analyze(sas_code)
         
-        # 步骤2: 分块SAS代码
+        # Step 2: Chunk SAS code
         chunked_code = self.code_chunker.process(sas_code, sas_filename)
         macros = chunked_code['macros']
         main_body_chunks = chunked_code['main_body_chunks']
         
-        # 步骤3: 转换宏
+        # Step 3: Convert macros
         python_functions = self.macro_converter.convert_all_macros(macros)
         
-        # 步骤4: 转换主体代码块
+        # Step 4: Convert main body code blocks
         python_blocks = self.main_converter.convert_all_blocks(main_body_chunks)
         
-        # 步骤5: 合并代码
+        # Step 5: Merge code
         merged_functions = self.code_merger.merge_functions(python_functions)
         merged_main = self.code_merger.merge_main_blocks(python_blocks)
         
-        # 步骤6: 处理数据库连接
+        # Step 6: Handle database connections
         db_connector = DBConnector(data_source_analysis)
         db_connection_code = db_connector.generate_db_connections()
         
-        # 步骤7: 处理外部依赖
+        # Step 7: Handle external dependencies
         dependency_handler = DependencyHandler(dependency_analysis)
         
-        # 步骤8: 合并所有代码
+        # Step 8: Merge all code
         full_code = ""
         
-        # 添加外部依赖注释
+        # Add external dependency comments
         dependency_comments = dependency_handler.generate_dependency_comments()
         full_code += f"{dependency_comments}\n\n"
         
-        # 添加数据库连接代码
+        # Add database connection code
         full_code += f"{db_connection_code}\n\n"
         
-        # 添加函数代码
+        # Add function code
         if merged_functions:
-            full_code += f"# ===== 函数定义 =====\n{merged_functions}\n\n"
+            full_code += f"# ===== Function Definitions =====\n{merged_functions}\n\n"
         
-        # 添加主体代码
-        full_code += f"# ===== 主体代码 =====\n{merged_main}\n"
+        # Add main body code
+        full_code += f"# ===== Main Code =====\n{merged_main}\n"
         
-        # 步骤9: 生成requirements.txt
+        # Step 9: Generate requirements.txt
         requirements = self.code_merger.generate_requirements(full_code)
         
         return {
@@ -106,27 +106,27 @@ class SASConverter:
     
     def save_output(self, result: Dict[str, Any], output_dir: str, base_filename: str) -> None:
         """
-        保存转换结果
+        Save conversion results
         
         Args:
-            result: 转换结果
-            output_dir: 输出目录
-            base_filename: 基础文件名
+            result: Conversion result
+            output_dir: Output directory
+            base_filename: Base filename
         """
-        # 创建输出目录
+        # Create output directory
         os.makedirs(output_dir, exist_ok=True)
         
-        # 保存Python代码
+        # Save Python code
         python_file = os.path.join(output_dir, f"{base_filename}.py")
         with open(python_file, 'w', encoding='utf-8') as f:
             f.write(result['python_code'])
         
-        # 保存requirements.txt
+        # Save requirements.txt
         requirements_file = os.path.join(output_dir, "requirements.txt")
         with open(requirements_file, 'w', encoding='utf-8') as f:
             f.write('\n'.join(result['requirements']))
         
-        # 保存函数库
+        # Save function library
         functions_dir = os.path.join(output_dir, "functions")
         os.makedirs(functions_dir, exist_ok=True)
         
@@ -135,18 +135,18 @@ class SASConverter:
             with open(func_file, 'w', encoding='utf-8') as f:
                 f.write(func_code)
         
-        # 保存分析结果
+        # Save analysis results
         analysis_dir = os.path.join(output_dir, "analysis")
         os.makedirs(analysis_dir, exist_ok=True)
         
         import json
         
-        # 保存数据源分析结果
+        # Save data source analysis results
         data_source_file = os.path.join(analysis_dir, "data_source_analysis.json")
         with open(data_source_file, 'w', encoding='utf-8') as f:
             json.dump(result['data_source_analysis'], f, indent=2)
         
-        # 保存依赖分析结果
+        # Save dependency analysis results
         dependency_file = os.path.join(analysis_dir, "dependency_analysis.json")
         with open(dependency_file, 'w', encoding='utf-8') as f:
             json.dump(result['dependency_analysis'], f, indent=2) 

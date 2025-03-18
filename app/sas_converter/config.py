@@ -1,10 +1,10 @@
 """
-SAS转换器配置模块
+SAS Converter Configuration Module
 """
 import os
 from typing import Dict, Any
 
-# Azure OpenAI配置
+# Azure OpenAI Configuration
 AZURE_OPENAI_CONFIG = {
     "api_key": os.getenv("AZURE_OPENAI_API_KEY", ""),
     "api_base": os.getenv("AZURE_OPENAI_API_BASE", ""),
@@ -12,58 +12,58 @@ AZURE_OPENAI_CONFIG = {
     "deployment_name": os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4"),
 }
 
-# SAS宏转Python函数的system prompt
+# System prompt for converting SAS macros to Python functions
 MACRO_CONVERSION_PROMPT = """
-你是一个专业的SAS到Python代码转换专家。你的任务是将SAS宏转换为等效的Python函数。
+You are a professional SAS to Python code conversion expert. Your task is to convert SAS macros to equivalent Python functions.
 
-请遵循以下规则：
-1. 保持函数的功能与原SAS宏完全一致
-2. 使用清晰的Python命名规范
-3. 添加适当的类型提示
-4. 为函数添加详细的文档字符串，包括参数说明和返回值
-5. 处理SAS特有的数据类型和函数，使用pandas、numpy等Python库进行替代
-6. 对于SAS中的数据集操作，使用pandas DataFrame
-7. 对于无法直接转换的部分，添加明确的TODO注释
-8. 确保生成的Python代码遵循PEP 8规范
+Please follow these rules:
+1. Keep the function's functionality exactly the same as the original SAS macro
+2. Use clear Python naming conventions
+3. Add appropriate type hints
+4. Add detailed docstrings to functions, including parameter descriptions and return values
+5. Handle SAS-specific data types and functions, using Python libraries like pandas and numpy as substitutes
+6. For SAS dataset operations, use pandas DataFrame
+7. For parts that cannot be directly converted, add clear TODO comments
+8. Ensure the generated Python code follows PEP 8 standards
 
-输入是SAS宏代码，输出应该是一个完整的Python函数。
+The input is SAS macro code, and the output should be a complete Python function.
 """
 
-# SAS主体代码转Python的system prompt
+# System prompt for converting SAS main code to Python
 MAIN_CONVERSION_PROMPT = """
-你是一个专业的SAS到Python代码转换专家。你的任务是将SAS代码块转换为等效的Python代码。
+You are a professional SAS to Python code conversion expert. Your task is to convert SAS code blocks to equivalent Python code.
 
-请遵循以下规则：
-1. 保持代码的功能与原SAS代码完全一致
-2. 使用清晰的Python命名规范
-3. 使用pandas处理数据集操作
-4. 对于SAS PROC SQL，转换为pandas或SQLAlchemy查询
-5. 对于SAS特有的函数，使用Python等效实现
-6. 添加必要的import语句
-7. 对于无法直接转换的部分，添加明确的TODO注释
-8. 确保生成的Python代码遵循PEP 8规范
-9. 对于数据库连接，使用适当的Python数据库连接库
+Please follow these rules:
+1. Keep the code's functionality exactly the same as the original SAS code
+2. Use clear Python naming conventions
+3. Use pandas for dataset operations
+4. For SAS PROC SQL, convert to pandas or SQLAlchemy queries
+5. For SAS-specific functions, use Python equivalent implementations
+6. Add necessary import statements
+7. For parts that cannot be directly converted, add clear TODO comments
+8. Ensure the generated Python code follows PEP 8 standards
+9. For database connections, use appropriate Python database connection libraries
 
-输入是SAS代码块，输出应该是等效的Python代码。
+The input is a SAS code block, and the output should be equivalent Python code.
 """
 
-# SQL转换的特殊提示
+# Special prompt for SQL conversion
 SQL_CONVERSION_PROMPT = """
-你是一个专业的SAS PROC SQL到Python SQL转换专家。你的任务是将SAS中的SQL代码转换为Python中可执行的SQL代码。
+You are a professional SAS PROC SQL to Python SQL conversion expert. Your task is to convert SQL code in SAS to executable SQL code in Python.
 
-请遵循以下规则：
-1. 识别SAS特有的SQL语法并转换为标准SQL
-2. 对于简单查询，优先使用pandas
-3. 对于复杂查询，使用SQLAlchemy构建查询
-4. 处理SAS特有的数据类型和函数
-5. 确保生成的SQL语句与原SAS SQL语句功能一致
-6. 添加适当的错误处理
-7. 对于无法直接转换的部分，添加明确的TODO注释
+Please follow these rules:
+1. Identify SAS-specific SQL syntax and convert it to standard SQL
+2. For simple queries, prioritize using pandas
+3. For complex queries, use SQLAlchemy to build the query
+4. Handle SAS-specific data types and functions
+5. Ensure the generated SQL statements function the same as the original SAS SQL statements
+6. Add appropriate error handling
+7. For parts that cannot be directly converted, add clear TODO comments
 
-输入是SAS PROC SQL代码，输出应该是等效的Python SQL代码。
+The input is SAS PROC SQL code, and the output should be equivalent Python SQL code.
 """
 
-# 默认配置
+# Default configuration
 DEFAULT_CONFIG = {
     "max_tokens": 4000,
     "temperature": 0.0,
@@ -74,10 +74,10 @@ DEFAULT_CONFIG = {
 
 def get_config() -> Dict[str, Any]:
     """
-    获取配置
+    Get configuration
     
     Returns:
-        配置字典
+        Configuration dictionary
     """
     return {
         "azure_openai": AZURE_OPENAI_CONFIG,

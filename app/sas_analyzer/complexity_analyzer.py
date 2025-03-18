@@ -1,22 +1,22 @@
 """
-SAS代码复杂度分析模块
+SAS Code Complexity Analysis Module
 """
 import re
 from typing import Dict, Any
 
 
 class SASComplexityAnalyzer:
-    """SAS代码复杂度分析器"""
+    """SAS Code Complexity Analyzer"""
     
     def analyze(self, code: str) -> Dict[str, Any]:
         """
-        分析SAS代码的复杂度
+        Analyze the complexity of SAS code
         
         Args:
-            code: SAS代码
+            code: SAS code
             
         Returns:
-            包含复杂度指标的字典
+            Dictionary containing complexity metrics
         """
         metrics = {
             'total_lines': self._count_lines(code),
@@ -33,11 +33,11 @@ class SASComplexityAnalyzer:
         return metrics
     
     def _count_lines(self, code: str) -> int:
-        """计算总行数"""
+        """Count total lines"""
         return len(code.split('\n'))
     
     def _count_code_lines(self, code: str) -> int:
-        """计算代码行数（非空非注释）"""
+        """Count code lines (non-empty, non-comment)"""
         lines = code.split('\n')
         code_lines = 0
         
@@ -49,8 +49,8 @@ class SASComplexityAnalyzer:
         return code_lines
     
     def _count_comment_lines(self, code: str) -> int:
-        """计算注释行数"""
-        # 简单估计，可能不完全准确
+        """Count comment lines"""
+        # Simple estimate, may not be completely accurate
         comment_pattern = r'^\s*\*.*?;|^\s*/\*.*?\*/|^\s*/\*|\*/\s*$'
         lines = code.split('\n')
         comment_lines = 0
@@ -60,14 +60,14 @@ class SASComplexityAnalyzer:
         for line in lines:
             stripped = line.strip()
             
-            # 检查是否在块注释中
+            # Check if in block comment
             if in_block_comment:
                 comment_lines += 1
                 if '*/' in line:
                     in_block_comment = False
                 continue
                 
-            # 检查是否是注释行
+            # Check if it's a comment line
             if stripped.startswith('*') or stripped.startswith('/*'):
                 comment_lines += 1
                 if '/*' in line and '*/' not in line:
@@ -76,31 +76,31 @@ class SASComplexityAnalyzer:
         return comment_lines
     
     def _count_macros(self, code: str) -> int:
-        """计算宏定义数量"""
+        """Count macro definitions"""
         return len(re.findall(r'%macro\s+\w+', code, re.IGNORECASE))
     
     def _count_procs(self, code: str) -> int:
-        """计算PROC步骤数量"""
+        """Count PROC steps"""
         return len(re.findall(r'proc\s+\w+', code, re.IGNORECASE))
     
     def _count_data_steps(self, code: str) -> int:
-        """计算DATA步骤数量"""
+        """Count DATA steps"""
         return len(re.findall(r'data\s+[\w\.]+', code, re.IGNORECASE))
     
     def _count_if_statements(self, code: str) -> int:
-        """计算IF语句数量"""
+        """Count IF statements"""
         return len(re.findall(r'\bif\b', code, re.IGNORECASE))
     
     def _count_do_loops(self, code: str) -> int:
-        """计算DO循环数量"""
+        """Count DO loops"""
         return len(re.findall(r'\bdo\b', code, re.IGNORECASE))
     
     def _calculate_cyclomatic_complexity(self, code: str) -> int:
         """
-        计算圈复杂度（简化版）
+        Calculate cyclomatic complexity (simplified)
         
-        圈复杂度 = 决策点数量 + 1
-        决策点包括：if, else, when, do while, do until, select
+        Cyclomatic complexity = number of decision points + 1
+        Decision points include: if, else, when, do while, do until, select
         """
         decision_points = (
             len(re.findall(r'\bif\b', code, re.IGNORECASE)) +
