@@ -1,13 +1,13 @@
 """
 Test Data Source Analyzer
 
-用于测试数据源分析器功能
+Used to test data source analyzer functionality
 """
 import json
 import sys
 import os
 
-# 添加父目录到sys.path
+# Add parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.code_runner.data_source_analyzer import analyze_data_sources, analyze_databases
@@ -15,25 +15,25 @@ from app.code_runner.database_analyzer import analyze_database_usage
 
 
 def test_comprehensive_example():
-    """测试全面的SAS示例"""
+    """Test comprehensive SAS example"""
     code = """
-    /* 定义变量 */
+    /* Define variables */
     %let risk_lib = RISK_CALC;
     %let ref_schema = REFERENCE_DB;
     
-    /* 定义多种类型的数据库 */
+    /* Define multiple database types */
     libname dwh oracle user=dw_user password=xxxx path="DWPROD";
     libname staging sqlsvr server="sql-server-01" database=stage_db;
     libname mdatal bigquery server="project-id" dataset=mydataset;
     libname &risk_lib TERADATA server="teradata01" schema = "&ref_schema";
     libname RSK_VAR TERADATA server="teradata01" schema = "RISK_VAR_DB";
     
-    /* 第一个PROC SQL块 */
+    /* First PROC SQL block */
     proc sql;
-        /* 简单的SELECT查询 */
+        /* Simple SELECT query */
         select * from mdatal.project_metadata;
         
-        /* JOIN操作跨多个数据库 */
+        /* JOIN operation across multiple databases */
         create table risk_positions as
         select a.position_id, 
                a.instrument_id,
@@ -52,16 +52,16 @@ def test_comprehensive_example():
           on a.position_id = d.position_id
         where a.status = 'Active';
         
-        /* UPDATE操作 */
+        /* UPDATE operation */
         update staging.batch_control
         set status = 'Completed',
             end_time = current_timestamp
         where batch_id = 123;
     quit;
     
-    /* 第二个PROC SQL块 */
+    /* Second PROC SQL block */
     proc sql;
-        /* INSERT操作 */
+        /* INSERT operation */
         insert into RSK_VAR.var_results
         select 
             current_date as calc_date,
@@ -70,146 +70,146 @@ def test_comprehensive_example():
         from RISK_CALC.var_calcs
         where calc_date = current_date - 1;
         
-        /* DELETE操作 */
+        /* DELETE operation */
         delete from mdatal.temp_calculations
         where created_date < current_date - 30;
         
-        /* CREATE VIEW操作 */
+        /* CREATE VIEW operation */
         create view dwh.active_positions as
         select * from dwh.positions
         where status = 'Active';
         
-        /* SELECT INTO操作 */
+        /* SELECT INTO operation */
         select * into mdatal.backup_metadata
         from mdatal.project_metadata;
     quit;
     """
     
-    # 分析所有数据源
+    # Analyze all data sources
     result = analyze_data_sources(code)
     result_obj = json.loads(result)
     
-    # 输出结果
-    print("全面数据源分析结果:")
+    # Output results
+    print("Comprehensive data source analysis results:")
     print(json.dumps(result_obj, indent=2))
     
-    # 验证结果
-    assert "databases" in result_obj, "应该包含数据库分析结果"
+    # Verify results
+    assert "databases" in result_obj, "Should include database analysis results"
     dbs = result_obj["databases"]
-    assert len(dbs) >= 5, "应该找到至少5个数据库"
+    assert len(dbs) >= 5, "Should find at least 5 databases"
     
-    # 验证是否找到所有数据库
+    # Verify all databases are found
     db_names = [db["databaseName"] for db in dbs]
     expected_dbs = ["dwh", "staging", "mdatal", "REFERENCE_DB", "RISK_VAR_DB"]
     for expected_db in expected_dbs:
-        assert expected_db in db_names, f"应该找到{expected_db}数据库"
+        assert expected_db in db_names, f"Should find {expected_db} database"
     
-    # 验证数据库类型
+    # Verify database types
     db_types = {db["databaseName"]: db["databaseType"] for db in dbs}
-    assert db_types["dwh"] == "oracle", "dwh应为oracle类型"
-    assert db_types["staging"] == "sqlsvr", "staging应为sqlsvr类型"
-    assert db_types["mdatal"] == "bigquery", "mdatal应为bigquery类型"
-    assert db_types["REFERENCE_DB"] == "TERADATA", "REFERENCE_DB应为TERADATA类型"
-    assert db_types["RISK_VAR_DB"] == "TERADATA", "RISK_VAR_DB应为TERADATA类型"
+    assert db_types["dwh"] == "oracle", "dwh should be oracle type"
+    assert db_types["staging"] == "sqlsvr", "staging should be sqlsvr type"
+    assert db_types["mdatal"] == "bigquery", "mdatal should be bigquery type"
+    assert db_types["REFERENCE_DB"] == "TERADATA", "REFERENCE_DB should be TERADATA type"
+    assert db_types["RISK_VAR_DB"] == "TERADATA", "RISK_VAR_DB should be TERADATA type"
     
-    # 验证表操作
+    # Verify table operations
     for db in dbs:
         if db["databaseName"] == "mdatal":
             tables = {table["tableName"]: table["operations"] for table in db["operationTables"]}
-            assert "project_metadata" in tables, "mdatal应包含project_metadata表"
-            assert "SELECT" in tables["project_metadata"], "project_metadata表应有SELECT操作"
-            assert "temp_calculations" in tables, "mdatal应包含temp_calculations表"
-            assert "DELETE" in tables["temp_calculations"], "temp_calculations表应有DELETE操作"
+            assert "project_metadata" in tables, "mdatal should include project_metadata table"
+            assert "SELECT" in tables["project_metadata"], "project_metadata table should have SELECT operation"
+            assert "temp_calculations" in tables, "mdatal should include temp_calculations table"
+            assert "DELETE" in tables["temp_calculations"], "temp_calculations table should have DELETE operation"
         
         if db["databaseName"] == "dwh":
             tables = {table["tableName"]: table["operations"] for table in db["operationTables"]}
-            assert "trading_positions" in tables, "dwh应包含trading_positions表"
-            assert "SELECT" in tables["trading_positions"], "trading_positions表应有SELECT操作"
-            assert "active_positions" in tables, "dwh应包含active_positions表"
-            assert "CREATE VIEW" in tables["active_positions"], "active_positions表应有CREATE VIEW操作"
+            assert "trading_positions" in tables, "dwh should include trading_positions table"
+            assert "SELECT" in tables["trading_positions"], "trading_positions table should have SELECT operation"
+            assert "active_positions" in tables, "dwh should include active_positions table"
+            assert "CREATE VIEW" in tables["active_positions"], "active_positions table should have CREATE VIEW operation"
 
 
 def test_only_database_analysis():
-    """仅测试数据库分析功能"""
+    """Test database analysis only"""
     code = """
-    /* 定义Teradata数据库 */
+    /* Define Teradata database */
     libname RSK_VAR TERADATA server="teradata01" schema = "RISK_VAR_DB";
     
-    /* SQL操作 */
+    /* SQL operations */
     proc sql;
-        /* 查询操作 */
+        /* Query operation */
         select * from RSK_VAR.var_results;
         
-        /* 插入操作 */
+        /* Insert operation */
         insert into RSK_VAR.audit_log
         values (current_timestamp, 'TEST', 'Testing');
     quit;
     """
     
-    # 仅分析数据库
+    # Analyze databases only
     result = analyze_databases(code)
     result_obj = json.loads(result)
     
-    # 输出结果
-    print("\n仅数据库分析结果:")
+    # Output results
+    print("\nDatabase analysis only results:")
     print(json.dumps(result_obj, indent=2))
     
-    # 验证结果
-    assert len(result_obj) == 1, "应该找到一个数据库"
-    assert result_obj[0]["databaseName"] == "RISK_VAR_DB", "数据库名应为RISK_VAR_DB"
-    assert result_obj[0]["databaseType"] == "TERADATA", "数据库类型应为TERADATA"
+    # Verify results
+    assert len(result_obj) == 1, "Should find one database"
+    assert result_obj[0]["databaseName"] == "RISK_VAR_DB", "Database name should be RISK_VAR_DB"
+    assert result_obj[0]["databaseType"] == "TERADATA", "Database type should be TERADATA"
     
-    # 验证表操作
+    # Verify table operations
     tables = {table["tableName"]: table["operations"] for table in result_obj[0]["operationTables"]}
-    assert "RSK_VAR" in tables, "应该包含RSK_VAR表"
+    assert "RSK_VAR" in tables, "Should include RSK_VAR table"
     
     for table_name, operations in tables.items():
         if table_name == "var_results":
-            assert "SELECT" in operations, "var_results表应有SELECT操作"
+            assert "SELECT" in operations, "var_results table should have SELECT operation"
         elif table_name == "audit_log":
-            assert "INSERT" in operations, "audit_log表应有INSERT操作"
+            assert "INSERT" in operations, "audit_log table should have INSERT operation"
 
 
 def test_direct_database_analyzer():
-    """直接测试数据库分析器"""
+    """Test direct database analyzer"""
     code = """
-    /* 定义数据库 */
+    /* Define database */
     libname dwh oracle user=dw_user password=xxxx path="DWPROD";
     
-    /* SQL操作 */
+    /* SQL operations */
     proc sql;
-        /* 查询并创建表 */
+        /* Query and create table */
         create table report as
         select * from dwh.customers
         where status = 'Active';
     quit;
     """
     
-    # 直接使用数据库分析器
+    # Use database analyzer directly
     result = analyze_database_usage(code)
     result_obj = json.loads(result)
     
-    # 输出结果
-    print("\n直接数据库分析器结果:")
+    # Output results
+    print("\nDirect database analyzer results:")
     print(json.dumps(result_obj, indent=2))
     
-    # 验证结果
-    assert len(result_obj) == 1, "应该找到一个数据库"
-    assert result_obj[0]["databaseName"] == "dwh", "数据库名应为dwh"
-    assert result_obj[0]["databaseType"] == "oracle", "数据库类型应为oracle"
+    # Verify results
+    assert len(result_obj) == 1, "Should find one database"
+    assert result_obj[0]["databaseName"] == "dwh", "Database name should be dwh"
+    assert result_obj[0]["databaseType"] == "oracle", "Database type should be oracle"
     
-    # 验证表操作
+    # Verify table operations
     tables = {table["tableName"]: table["operations"] for table in result_obj[0]["operationTables"]}
-    assert "customers" in tables, "应该包含customers表"
-    assert "SELECT" in tables["customers"], "customers表应有SELECT操作"
+    assert "customers" in tables, "Should include customers table"
+    assert "SELECT" in tables["customers"], "customers table should have SELECT operation"
 
 
 if __name__ == "__main__":
     try:
-        print("开始测试数据源分析器...")
+        print("Starting data source analyzer tests...")
         test_comprehensive_example()
         test_only_database_analysis()
         test_direct_database_analyzer()
-        print("\n所有测试通过！数据源分析器功能正常。")
+        print("\nAll tests passed! Data source analyzer is working correctly.")
     except Exception as e:
-        print(f"\n测试失败: {str(e)}") 
+        print(f"\nTest failed: {str(e)}") 

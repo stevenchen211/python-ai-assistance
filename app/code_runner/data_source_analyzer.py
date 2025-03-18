@@ -1,7 +1,7 @@
 """
 Data Source Analyzer Module
 
-用于分析SAS代码中的数据源使用情况
+Used to analyze data source usage in SAS code
 """
 import json
 from typing import Dict, List, Any
@@ -9,39 +9,39 @@ from .database_analyzer import analyze_database_usage
 
 
 class DataSourceAnalyzer:
-    """数据源分析器"""
+    """Data Source Analyzer"""
     
     def __init__(self, code: str):
         """
-        初始化数据源分析器
+        Initialize data source analyzer
         
         Args:
-            code: SAS代码
+            code: SAS code
         """
         self.code = code
         self.analysis_results = {}
     
     def analyze_databases(self) -> List[Dict[str, Any]]:
         """
-        分析数据库使用情况
+        Analyze database usage
         
         Returns:
-            数据库使用信息列表
+            List of database usage information
         """
         db_json = analyze_database_usage(self.code)
         return json.loads(db_json)
     
     def analyze_all(self) -> Dict[str, Any]:
         """
-        执行完整的数据源分析
+        Perform complete data source analysis
         
         Returns:
-            所有数据源分析结果
+            All data source analysis results
         """
-        # 分析数据库使用情况
+        # Analyze database usage
         self.analysis_results["databases"] = self.analyze_databases()
         
-        # 未来可以添加其他数据源分析功能
+        # Future extensions for other data source types
         # self.analysis_results["files"] = self.analyze_files()
         # self.analysis_results["api"] = self.analyze_api_calls()
         
@@ -49,10 +49,10 @@ class DataSourceAnalyzer:
     
     def get_analysis_json(self) -> str:
         """
-        获取分析结果的JSON表示
+        Get JSON representation of analysis results
         
         Returns:
-            JSON格式的分析结果
+            Analysis results in JSON format
         """
         if not self.analysis_results:
             self.analyze_all()
@@ -61,10 +61,10 @@ class DataSourceAnalyzer:
     
     def get_databases_json(self) -> str:
         """
-        获取数据库分析结果的JSON表示
+        Get JSON representation of database analysis results
         
         Returns:
-            JSON格式的数据库分析结果
+            Database analysis results in JSON format
         """
         if "databases" not in self.analysis_results:
             self.analysis_results["databases"] = self.analyze_databases()
@@ -74,13 +74,13 @@ class DataSourceAnalyzer:
 
 def analyze_data_sources(code: str) -> str:
     """
-    分析SAS代码中的数据源使用情况
+    Analyze data source usage in SAS code
     
     Args:
-        code: SAS代码
+        code: SAS code
         
     Returns:
-        JSON格式的数据源分析结果
+        Data source analysis results in JSON format
     """
     analyzer = DataSourceAnalyzer(code)
     return analyzer.get_analysis_json()
@@ -88,13 +88,13 @@ def analyze_data_sources(code: str) -> str:
 
 def analyze_databases(code: str) -> str:
     """
-    分析SAS代码中的数据库使用情况
+    Analyze database usage in SAS code
     
     Args:
-        code: SAS代码
+        code: SAS code
         
     Returns:
-        JSON格式的数据库分析结果
+        Database analysis results in JSON format
     """
     analyzer = DataSourceAnalyzer(code)
     return analyzer.get_databases_json() 
