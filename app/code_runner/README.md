@@ -207,3 +207,30 @@ The real-time logging is implemented using Server-Sent Events (SSE), which allow
 - Running untrusted code may pose security risks, please ensure use in a secure environment
 - Dependency installation requires network connection and appropriate permissions
 - Long-running scripts may consume significant resources
+
+## 新功能：SAS 数据库分析工具
+
+该包新增了 SAS 代码数据库使用情况分析功能，可分析 SAS 代码中的数据库连接和表操作。
+
+### 主要特性
+
+- 识别多种数据库类型：Oracle、SQL Server、BigQuery、Teradata 等
+- 解析 SAS 变量引用（如 `&var_name`）
+- 分析表操作：SELECT、INSERT、UPDATE、DELETE、CREATE VIEW、SELECT INTO 等
+- 支持命令行工具和 API 调用
+
+### 使用方法
+
+**命令行工具**：
+```bash
+python analyze_sas.py [选项] [SAS文件路径]
+```
+
+**API 调用**：
+```python
+from app.code_runner.data_source_analyzer import analyze_databases
+
+result = analyze_databases(sas_code)
+```
+
+详细信息请参考 [数据库分析工具说明文档](./README_DATABASE_ANALYZER.md)。
