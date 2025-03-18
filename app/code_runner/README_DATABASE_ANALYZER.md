@@ -1,62 +1,62 @@
-# SAS 数据库分析工具
+# SAS Database Analysis Tool
 
-这个工具用于分析 SAS 代码中的数据库使用情况，能够识别不同类型的数据库连接和表操作，并以 JSON 格式输出分析结果。
+This tool is used to analyze database usage in SAS code, capable of identifying different types of database connections and table operations, and outputting analysis results in JSON format.
 
-## 功能特性
+## Features
 
-- **多种数据库类型支持**：支持解析 Oracle、SQL Server、BigQuery、Teradata 等常见数据库类型
-- **变量解析**：自动解析 SAS 代码中的变量引用 (如 `&var_name`)
-- **表操作分析**：识别 SELECT、INSERT、UPDATE、DELETE、CREATE VIEW、SELECT INTO 等操作
-- **命令行界面**：提供易用的命令行界面，支持文件输入和标准输入
+- **Multiple Database Type Support**: Supports parsing Oracle, SQL Server, BigQuery, Teradata and other common database types
+- **Variable Resolution**: Automatically resolves variable references in SAS code (such as `&var_name`)
+- **Table Operation Analysis**: Identifies operations like SELECT, INSERT, UPDATE, DELETE, CREATE VIEW, SELECT INTO
+- **Command Line Interface**: Provides an easy-to-use command line interface, supporting file input and standard input
 
-## 支持的场景
+## Supported Scenarios
 
-1. **普通外部数据库** (`LIBNAME` 命令)
-   - 格式：`libname dbname dbtype [连接参数];`
-   - 示例：`libname mdatal bigquery server="project-id" dataset=mydataset;`
-   - 分析：识别数据库名、类型和连接参数，并分析对该数据库中表的操作
+1. **Generic External Databases** (`LIBNAME` command)
+   - Format: `libname dbname dbtype [connection parameters];`
+   - Example: `libname mdatal bigquery server="project-id" dataset=mydataset;`
+   - Analysis: Identifies database name, type, and connection parameters, and analyzes operations on tables in that database
 
-2. **Teradata 数据库** (`LIBNAME` 命令)
-   - 格式：`libname tblname TERADATA server="..." schema="dbname";`
-   - 示例：`libname RSK_LABL TERADATA server="tdprod" schema="RISK_DB";`
-   - 分析：识别 Teradata 数据库中的 schema 和表，并分析对这些表的操作
+2. **Teradata Databases** (`LIBNAME` command)
+   - Format: `libname tblname TERADATA server="..." schema="dbname";`
+   - Example: `libname RSK_LABL TERADATA server="tdprod" schema="RISK_DB";`
+   - Analysis: Identifies schemas and tables in Teradata databases, and analyzes operations on these tables
 
-## 安装
+## Installation
 
-确保已安装 Python 3.6 或更高版本，然后复制项目文件到本地目录即可。
+Ensure you have Python 3.6 or higher installed, then copy the project files to your local directory.
 
-## 使用方法
+## Usage
 
-### 命令行工具
+### Command Line Tool
 
 ```bash
-python analyze_sas.py [选项] [SAS文件路径]
+python analyze_sas.py [options] [SAS_file_path]
 ```
 
-参数：
-- `[SAS文件路径]`：要分析的 SAS 代码文件路径 (如未提供则从标准输入读取)
-- `--output, -o`：输出 JSON 文件路径 (如未提供则输出到标准输出)
-- `--database-only, -d`：仅分析数据库使用情况
-- `--pretty, -p`：美化输出 JSON
+Parameters:
+- `[SAS_file_path]`: Path to the SAS code file to analyze (if not provided, reads from standard input)
+- `--output, -o`: Output JSON file path (if not provided, outputs to standard output)
+- `--database-only, -d`: Only analyze database usage
+- `--pretty, -p`: Beautify JSON output
 
-示例：
+Examples:
 ```bash
-# 分析文件并美化输出
+# Analyze file and beautify output
 python analyze_sas.py path/to/sas_code.sas --pretty
 
-# 分析文件并保存结果到文件
+# Analyze file and save results to file
 python analyze_sas.py path/to/sas_code.sas -o results.json
 
-# 仅分析数据库使用情况
+# Only analyze database usage
 python analyze_sas.py path/to/sas_code.sas -d
 ```
 
-### 在 Python 代码中使用
+### Using in Python Code
 
 ```python
 from app.code_runner.data_source_analyzer import analyze_databases
 
-# SAS 代码
+# SAS code
 sas_code = """
 libname dwh oracle user=dw_user password=xxxx path="DWPROD";
 proc sql;
@@ -64,13 +64,13 @@ proc sql;
 quit;
 """
 
-# 分析数据库使用情况
+# Analyze database usage
 result = analyze_databases(sas_code)
 ```
 
-## 输出格式
+## Output Format
 
-分析结果以 JSON 格式输出，示例如下：
+Analysis results are output in JSON format, for example:
 
 ```json
 {
@@ -90,11 +90,11 @@ result = analyze_databases(sas_code)
 }
 ```
 
-## 限制
+## Limitations
 
-- 目前仅支持 `PROC SQL` 语句块中对数据库表的操作分析
-- 对于复杂的 SAS 宏或条件逻辑，可能无法完全分析所有可能的执行路径
+- Currently only supports analysis of database table operations within `PROC SQL` blocks
+- For complex SAS macros or conditional logic, it may not be able to fully analyze all possible execution paths
 
-## 扩展
+## Extension
 
-该工具设计为可扩展的，支持未来添加其他数据源类型的分析，如文件系统和 API 调用。 
+This tool is designed to be extensible, supporting the future addition of analysis for other data source types, such as file systems and API calls. 
